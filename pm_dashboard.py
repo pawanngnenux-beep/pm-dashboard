@@ -161,6 +161,16 @@ cycle_df['Cycle Time (Days)'] = (
 ).dt.days
 
 
+     st.subheader("Cycle Time (Days)")
+
+    cycle_df = filtered_df[
+        filtered_df['Status'].str.lower() == 'done'
+    ].copy()
+
+    cycle_df['Cycle Time (Days)'] = (
+        cycle_df['Completed Date'] - cycle_df['Assinged Date']
+    ).dt.days
+
     cycle_table = cycle_df[
         cycle_df['Cycle Time (Days)'].notna()
     ][
@@ -169,6 +179,7 @@ cycle_df['Cycle Time (Days)'] = (
 
     st.dataframe(cycle_table, use_container_width=True)
     download_excel(cycle_table, "cycle_time.xlsx")
+
 
     st.subheader("Monthly Completion Trend")
 
@@ -257,4 +268,5 @@ st.dataframe(
 )
 
 download_excel(filtered_df, "full_task_tracker.xlsx")
+
 
