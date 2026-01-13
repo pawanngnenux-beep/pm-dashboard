@@ -69,8 +69,8 @@ def download_excel(dataframe, filename):
 # =================================================
 # KPI Section (Executive First View)
 # =================================================
-completed = filtered_df['Completed Date'].notna().sum()
-pending = filtered_df['Completed Date'].isna().sum()
+completed = (filtered_df['Status'].str.lower() == 'done').sum()
+pending = (filtered_df['Status'].str.lower() != 'done').sum()
 validated = (filtered_df['Validate (Y/N)'] == 'Y').sum()
 
 k1, k2, k3 = st.columns(3)
@@ -152,10 +152,14 @@ with tab_delivery:
 
     st.subheader("Cycle Time (Days)")
 
-    cycle_df = filtered_df.copy()
-    cycle_df['Cycle Time (Days)'] = (
-        cycle_df['Completed Date'] - cycle_df['Assinged Date']
-    ).dt.days
+    cycle_df = filtered_df[
+    filtered_df['Status'].str.lower() == 'done'
+].copy()
+
+cycle_df['Cycle Time (Days)'] = (
+    cycle_df['Completed Date'] - cycle_df['Assinged Date']
+).dt.days
+
 
     cycle_table = cycle_df[
         cycle_df['Cycle Time (Days)'].notna()
@@ -168,7 +172,10 @@ with tab_delivery:
 
     st.subheader("Monthly Completion Trend")
 
-    monthly = filtered_df.dropna(subset=['Completed Date']).copy()
+    monthly = filtered_df[
+    filtered_df['Status'].str.lower() == 'done'
+].copy()
+
     monthly['Month'] = monthly['Completed Date'].dt.to_period('M').astype(str)
 
     monthly_summary = (
@@ -190,10 +197,10 @@ with tab_risk:
     today = pd.Timestamp.today()
 
     overdue_tasks = filtered_df[
-        (filtered_df['Completed Date'].isna()) &
-        (filtered_df['Assinged Date'].notna()) &
-        ((today - filtered_df['Assinged Date']).dt.days > 14)
-    ][
+    (filtered_df['Status'].str.lower() != 'done') &
+    (filtered_df['Assinged Date'].notna()) &
+    ((today - filtered_df['Assinged Date']).dt.days > 14)
+][
         ['Name', 'Status', 'assigned', 'Assinged Date']
     ]
 
@@ -250,3 +257,4 @@ st.dataframe(
 )
 
 download_excel(filtered_df, "full_task_tracker.xlsx")
+
