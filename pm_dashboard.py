@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 from io import BytesIO
 
 # =================================================
-# Page Config
+# PAGE CONFIG
 # =================================================
 st.set_page_config(
     page_title="PM Executive Dashboard",
@@ -14,7 +14,7 @@ st.set_page_config(
 st.title("📊 Project Management Executive Dashboard")
 
 # =================================================
-# Load Data
+# LOAD DATA
 # =================================================
 @st.cache_data
 def load_data():
@@ -23,6 +23,7 @@ def load_data():
 
     if 'Assinged Date' in df.columns:
         df['Assinged Date'] = pd.to_datetime(df['Assinged Date'], errors='coerce')
+
     if 'Completed Date' in df.columns:
         df['Completed Date'] = pd.to_datetime(df['Completed Date'], errors='coerce')
 
@@ -31,20 +32,20 @@ def load_data():
 df = load_data()
 
 # =================================================
-# Sidebar Filters
+# SIDEBAR FILTERS
 # =================================================
 st.sidebar.header("🔎 Filters")
 
 status_filter = st.sidebar.multiselect(
     "Status",
-    options=df['Status'].dropna().unique(),
-    default=df['Status'].dropna().unique()
+    options=sorted(df['Status'].dropna().unique()),
+    default=sorted(df['Status'].dropna().unique())
 )
 
 owner_filter = st.sidebar.multiselect(
     "Owner",
-    options=df['assigned'].dropna().unique(),
-    default=df['assigned'].dropna().unique()
+    options=sorted(df['assigned'].dropna().unique()),
+    default=sorted(df['assigned'].dropna().unique())
 )
 
 filtered_df = df[
@@ -53,11 +54,11 @@ filtered_df = df[
 ]
 
 # =================================================
-# Download Helper
+# DOWNLOAD HELPER (NO XLSXWRITER)
 # =================================================
 def download_excel(dataframe, filename):
     buffer = BytesIO()
-    with pd.ExcelWriter(buffer, engine='xlsxwriter') as writer:
+    with pd.ExcelWriter(buffer, engine="openpyxl") as writer:
         dataframe.to_excel(writer, index=False)
     st.download_button(
         label="⬇ Download Excel",
@@ -67,7 +68,7 @@ def download_excel(dataframe, filename):
     )
 
 # =================================================
-# KPI Section (Executive First View)
+# KPI SECTION
 # =================================================
 completed = (filtered_df['Status'].str.lower() == 'done').sum()
 pending = (filtered_df['Status'].str.lower() != 'done').sum()
@@ -94,13 +95,13 @@ with tab_overview:
     st.subheader("Tasks by Status")
 
     status_summary = (
-        filtered_df.groupby('Status')
+        filtered_df.groupby("Status")
         .size()
-        .reset_index(name='Task Count')
+        .reset_index(name="Task Count")
     )
 
     fig, ax = plt.subplots()
-    ax.bar(status_summary['Status'], status_summary['Task Count'])
+    ax.bar(status_summary["Status"], status_summary["Task Count"])
     ax.set_xlabel("Status")
     ax.set_ylabel("Task Count")
     st.pyplot(fig)
@@ -110,13 +111,13 @@ with tab_overview:
     st.subheader("Owner Workload")
 
     owner_summary = (
-        filtered_df.groupby('assigned')
+        filtered_df.groupby("assigned")
         .size()
-        .reset_index(name='Task Count')
+        .reset_index(name="Task Count")
     )
 
     fig, ax = plt.subplots()
-    ax.bar(owner_summary['assigned'], owner_summary['Task Count'])
+    ax.bar(owner_summary["assigned"], owner_summary["Task Count"])
     plt.xticks(rotation=45)
     st.pyplot(fig)
 
@@ -124,17 +125,17 @@ with tab_overview:
 
     st.subheader("Status × Owner Matrix")
 
-    status_owner_matrix = pd.pivot_table(
+    matrix = pd.pivot_table(
         filtered_df,
-        index='assigned',
-        columns='Status',
-        values='Name',
-        aggfunc='count',
+        index="assigned",
+        columns="Status",
+        values="Name",
+        aggfunc="count",
         fill_value=0
     )
 
-    st.dataframe(status_owner_matrix, use_container_width=True)
-    download_excel(status_owner_matrix.reset_index(), "status_owner_matrix.xlsx")
+    st.dataframe(matrix, use_container_width=True)
+    download_excel(matrix.reset_index(), "status_owner_matrix.xlsx")
 
 # =================================================
 # DELIVERY TAB
@@ -153,47 +154,35 @@ with tab_delivery:
     st.subheader("Cycle Time (Days)")
 
     cycle_df = filtered_df[
-    filtered_df['Status'].str.lower() == 'done'
-].copy()
-
-cycle_df['Cycle Time (Days)'] = (
-    cycle_df['Completed Date'] - cycle_df['Assinged Date']
-).dt.days
-
-
-     st.subheader("Cycle Time (Days)")
-
-    cycle_df = filtered_df[
-        filtered_df['Status'].str.lower() == 'done'
+        filtered_df["Status"].str.lower() == "done"
     ].copy()
 
-    cycle_df['Cycle Time (Days)'] = (
-        cycle_df['Completed Date'] - cycle_df['Assinged Date']
+    cycle_df["Cycle Time (Days)"] = (
+        cycle_df["Completed Date"] - cycle_df["Assinged Date"]
     ).dt.days
 
     cycle_table = cycle_df[
-        cycle_df['Cycle Time (Days)'].notna()
+        cycle_df["Cycle Time (Days)"].notna()
     ][
-        ['Name', 'assigned', 'Status', 'Cycle Time (Days)']
-    ].sort_values('Cycle Time (Days)', ascending=False)
+        ["Name", "assigned", "Status", "Cycle Time (Days)"]
+    ].sort_values("Cycle Time (Days)", ascending=False)
 
     st.dataframe(cycle_table, use_container_width=True)
     download_excel(cycle_table, "cycle_time.xlsx")
 
-
     st.subheader("Monthly Completion Trend")
 
     monthly = filtered_df[
-    filtered_df['Status'].str.lower() == 'done'
-].copy()
+        filtered_df["Status"].str.lower() == "done"
+    ].copy()
 
-    monthly['Month'] = monthly['Completed Date'].dt.to_period('M').astype(str)
+    monthly["Month"] = monthly["Completed Date"].dt.to_period("M").astype(str)
 
     monthly_summary = (
-        monthly.groupby('Month')
+        monthly.groupby("Month")
         .size()
-        .reset_index(name='Completed Tasks')
-        .sort_values('Month')
+        .reset_index(name="Completed Tasks")
+        .sort_values("Month")
     )
 
     st.dataframe(monthly_summary, use_container_width=True)
@@ -208,11 +197,11 @@ with tab_risk:
     today = pd.Timestamp.today()
 
     overdue_tasks = filtered_df[
-    (filtered_df['Status'].str.lower() != 'done') &
-    (filtered_df['Assinged Date'].notna()) &
-    ((today - filtered_df['Assinged Date']).dt.days > 14)
-][
-        ['Name', 'Status', 'assigned', 'Assinged Date']
+        (filtered_df["Status"].str.lower() != "done") &
+        (filtered_df["Assinged Date"].notna()) &
+        ((today - filtered_df["Assinged Date"]).dt.days > 14)
+    ][
+        ["Name", "Status", "assigned", "Assinged Date"]
     ]
 
     if overdue_tasks.empty:
@@ -224,9 +213,9 @@ with tab_risk:
     st.subheader("Validation Pending")
 
     pending_validation = filtered_df[
-        filtered_df['Validate (Y/N)'] != 'Y'
+        filtered_df["Validate (Y/N)"] != "Y"
     ][
-        ['Name', 'Status', 'assigned', 'Completed Date']
+        ["Name", "Status", "assigned", "Completed Date"]
     ]
 
     if pending_validation.empty:
@@ -238,13 +227,13 @@ with tab_risk:
     st.subheader("Risk / Failed Tasks")
 
     risk_tasks = filtered_df[
-        filtered_df['Result'].str.contains(
-            'fail|block|risk|issue',
+        filtered_df["Result"].str.contains(
+            "fail|block|risk|issue",
             case=False,
             na=False
         )
     ][
-        ['Name', 'Status', 'assigned', 'Result', 'Notes']
+        ["Name", "Status", "assigned", "Result", "Notes"]
     ]
 
     if risk_tasks.empty:
@@ -254,19 +243,17 @@ with tab_risk:
         download_excel(risk_tasks, "risk_tasks.xlsx")
 
 # =================================================
-# MASTER TASK TRACKER (BOTTOM)
+# MASTER TASK TRACKER
 # =================================================
 st.divider()
 st.subheader("📋 Master Task Tracker")
 
 st.dataframe(
     filtered_df[
-        ['Name', 'Status', 'assigned', 'Validate (Y/N)',
-         'Result', 'Assinged Date', 'Completed Date']
+        ["Name", "Status", "assigned", "Validate (Y/N)",
+         "Result", "Assinged Date", "Completed Date"]
     ],
     use_container_width=True
 )
 
 download_excel(filtered_df, "full_task_tracker.xlsx")
-
-
